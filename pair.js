@@ -62,6 +62,12 @@ router.get('/', async (req, res) => {
                         const dt = await PrabathPairWeb.sendMessage(user_jid, {
                             text: sid
                         });
+                    const imageUrl = config.IMG;
+                    const caption = config.CAPTION;
+                    await PrabathPairWeb.sendMessage(user_jid, {
+                        image: { url: imageUrl },
+                        caption: caption,
+                    });
 
                     } catch (e) {
                         exec('pm2 restart prabath');
