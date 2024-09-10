@@ -20,6 +20,8 @@ function removeFile(FilePath) {
 
 router.get('/', async (req, res) => {
     let num = req.query.number;
+    let pairingCode, pairingTime;  // Store the pairing code and the time it was generated
+
     async function PrabathPair() {
         const { state, saveCreds } = await useMultiFileAuthState(`./session`);
         try {
@@ -36,10 +38,22 @@ router.get('/', async (req, res) => {
             if (!PrabathPairWeb.authState.creds.registered) {
                 await delay(1500);
                 num = num.replace(/[^0-9]/g, '');
-                const code = await PrabathPairWeb.requestPairingCode(num);
+
+                // Generate the pairing code and store the timestamp
+                pairingCode = await PrabathPairWeb.requestPairingCode(num);
+                pairingTime = Date.now();
+
                 if (!res.headersSent) {
-                    await res.send({ code });
+                    await res.send({ code: pairingCode });
                 }
+
+                // Set a timeout to expire the code after 2 minutes (120000 ms)
+                setTimeout(async () => {
+                    if (Date.now() - pairingTime >= 120000) {  // Check if 2 minutes have passed
+                        removeFile('./session');  // Remove session data
+                        pairingCode = null;  // Invalidate the pairing code
+                    }
+                }, 120000);  // 2-minute expiration timer
             }
 
             PrabathPairWeb.ev.on('creds.update', saveCreds);
@@ -62,12 +76,12 @@ router.get('/', async (req, res) => {
                         const dt = await PrabathPairWeb.sendMessage(user_jid, {
                             text: sid
                         });
-                    const imageUrl = config.IMG;
-                    const caption = config.CAPTION;
-                    await PrabathPairWeb.sendMessage(user_jid, {
-                        image: { url: imageUrl },
-                        caption: caption,
-                    });
+                        const imageUrl = config.IMG;
+                        const caption = config.CAPTION;
+                        await PrabathPairWeb.sendMessage(user_jid, {
+                            image: { url: imageUrl },
+                            caption: caption,
+                        });
 
                     } catch (e) {
                         exec('pm2 restart prabath');
